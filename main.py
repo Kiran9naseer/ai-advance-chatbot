@@ -227,18 +227,22 @@ async def upload_file(file: UploadFile = File(...), session_id: str = Form(...))
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             for page in reader.pages:
                 text += page.extract_text() + "\n"
-        elif filename.endswith((".png", ".jpg", ".jpeg")):
-            res = requests.post(
-                'https://api.ocr.space/parse/image',
-                data={'apikey': 'helloworld'},
-                files={'file': (file.filename, content)}
-            )
-            data = res.json()
-            if not data.get("IsErroredOnProcessing"):
-                for result in data.get("ParsedResults", []):
-                    text += result.get("ParsedText", "") + "\n"
-            else:
-                raise Exception("OCR Failed: " + str(data.get("ErrorMessage")))
+        elif filename.endswith((".png", ".jpg", ".jpeg", ".webp")):
+            try:
+                res = requests.post(
+                    'https://api.ocr.space/parse/image',
+                    data={'apikey': 'helloworld'},
+                    files={'file': (file.filename, content)}
+                )
+                data = res.json()
+                if not data.get("IsErroredOnProcessing") and data.get("ParsedResults"):
+                    for result in data.get("ParsedResults", []):
+                        text += result.get("ParsedText", "") + "\n"
+                else:
+                    text = "[System Note: An image was uploaded but the OCR service failed to read the text inside it due to size or API limits.]"
+            except Exception as e:
+                print("OCR Error:", e)
+                text = "[System Note: An image was uploaded but the OCR service failed to read the text inside it.]"
         else:
             text = content.decode("utf-8")
             

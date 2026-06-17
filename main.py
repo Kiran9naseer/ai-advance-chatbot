@@ -296,12 +296,18 @@ async def chat_stream_endpoint(request: ChatRequest):
     if request.web_search:
         try:
             results = DDGS().text(request.message, max_results=3)
-            search_context = "\n\nLatest Web Search Results:\n"
-            for r in results:
-                search_context += f"- {r['title']}: {r['body']} ({r['href']})\n"
-            conversation_history[0]["content"] += search_context + "\nUse the above search results to accurately answer the user's latest message if relevant."
+            results_list = list(results) if results else []
+            
+            if results_list:
+                search_context = "\n\nLatest Web Search Results:\n"
+                for r in results_list:
+                    search_context += f"- {r.get('title', '')}: {r.get('body', '')} ({r.get('href', '')})\n"
+                conversation_history[0]["content"] += search_context + "\nUse the above search results to accurately answer the user's latest message if relevant."
+            else:
+                conversation_history[0]["content"] += "\n\n[System Note: The web search attempt returned no results. Please inform the user that you could not fetch live real-time data right now, and answer based on your existing knowledge.]"
         except Exception as e:
             print("Web Search failed:", e)
+            conversation_history[0]["content"] += "\n\n[System Note: The web search attempt failed due to an error. Please inform the user that you could not fetch live real-time data right now, and answer based on your existing knowledge.]"
     
     async def event_stream():
         selected_model = request.model or "gpt-oss-120b"

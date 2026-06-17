@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+PyPDF2
+requests
+duckduckgo-search
+openai
+python-dotenv
+pydantic

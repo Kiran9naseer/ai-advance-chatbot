@@ -165,6 +165,16 @@ function handleKeyDown(event) {
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const text = input.value.trim();
+
+    // If there's a pending file, handle file upload flow
+    if (pendingFile) {
+        input.value = '';
+        input.style.height = 'auto';
+        removeSuggestedReplies();
+        await uploadPendingFile(text);
+        return;
+    }
+
     if (text === '') return;
 
     input.value = '';
@@ -873,25 +883,76 @@ function triggerFileInput(acceptType) {
 }
 
 // ============================================
-// FILE UPLOAD
+// FILE UPLOAD - ChatGPT Style (Preview first, Upload on Send)
 // ============================================
-document.getElementById('fileInput').addEventListener('change', async (e) => {
+let pendingFile = null; // stores the file waiting to be sent
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function clearFilePreview() {
+    pendingFile = null;
+    const area = document.getElementById('filePreviewArea');
+    if (area) area.style.display = 'none';
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.value = '';
+}
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    pendingFile = file;
 
+    // Show preview in input box
+    const area = document.getElementById('filePreviewArea');
+    const thumb = document.getElementById('filePreviewThumb');
+    const nameEl = document.getElementById('filePreviewName');
+    const sizeEl = document.getElementById('filePreviewSize');
+
+    nameEl.textContent = file.name;
+    sizeEl.textContent = formatFileSize(file.size);
+
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            thumb.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // Document icon
+        thumb.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+    }
+
+    area.style.display = 'block';
+    document.getElementById('messageInput').focus();
+});
+
+async function uploadPendingFile(userMessage) {
+    const file = pendingFile;
+    pendingFile = null;
+    const area = document.getElementById('filePreviewArea');
+    if (area) area.style.display = 'none';
+
+    // Show in chat: image thumbnail or filename
     const welcome = document.getElementById('welcomeSection');
     if (welcome) welcome.style.display = 'none';
 
     if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = function(event) {
-            const base64Url = event.target.result;
-            const imgHtml = `<img src="${base64Url}" style="max-width:250px; border-radius:8px; margin-top:10px; display:block; border:2px solid var(--border-color);">`;
-            addMessage(`*Attached Image: ${file.name}*<br>${imgHtml}`, 'user');
+        reader.onload = (ev) => {
+            const imgHtml = `<img src="${ev.target.result}" style="max-width:200px; border-radius:10px; display:block; margin-bottom:6px;">`;
+            const msgText = userMessage ? `${imgHtml}<span>${userMessage}</span>` : imgHtml;
+            addMessage(msgText, 'user');
         };
         reader.readAsDataURL(file);
     } else {
-        addMessage(`*Uploading: ${file.name}...*`, 'user');
+        const docHtml = `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,0.1);border-radius:8px;margin-bottom:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><span style="font-size:0.82rem;color:var(--text-secondary)">${file.name}</span></div>`;
+        const msgText = userMessage ? `${docHtml}<span>${userMessage}</span>` : docHtml;
+        addMessage(msgText, 'user');
     }
 
     showTyping();
@@ -904,8 +965,11 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         hideTyping();
         if (res.ok) {
             loadSessions();
+            const aiPrompt = userMessage
+                ? userMessage
+                : "I have just attached a file/image. Please read the document context and directly explain or summarize what is in it in a friendly way.";
             await streamResponse({
-                message: "I have just attached a file/image. Please read the document context and directly explain or summarize what is in it in a friendly way.",
+                message: aiPrompt,
                 session_id: currentSessionId,
                 web_search: isWebSearchEnabled,
                 system_prompt: localStorage.getItem('systemPrompt') || null,
@@ -919,8 +983,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         addMessage(`❌ Error: ${err.message}`, 'bot');
     }
 
-    e.target.value = '';
-});
+    document.getElementById('fileInput').value = '';
+}
+
 
 // ============================================
 // SETTINGS MODAL

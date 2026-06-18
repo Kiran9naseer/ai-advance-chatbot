@@ -777,12 +777,16 @@ body {
 [data-theme="light"] .input-area { background: rgba(245, 245, 250, 0.8); }
 
 .input-container {
-    display: flex; align-items: flex-end; gap: 8px;
+    display: flex; flex-direction: column; gap: 0;
     background: var(--input-bg); border: 1px solid var(--border-color);
     border-radius: 16px; padding: 8px 12px; transition: var(--transition-fast);
 }
 .input-container:focus-within {
     border-color: var(--purple-500); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.input-row {
+    display: flex; align-items: flex-end; gap: 8px;
 }
 
 .input-container textarea {

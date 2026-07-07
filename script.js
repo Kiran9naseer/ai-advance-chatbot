@@ -941,7 +941,8 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
     const sizeEl = document.getElementById('filePreviewSize');
     const textContainer = nameEl.parentElement;
 
-    if (file.type.startsWith('image/')) {
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+    if (isImage) {
         // Hide name and size container for images (ChatGPT style)
         textContainer.style.display = 'none';
         thumb.style.width = '64px';
@@ -978,7 +979,8 @@ async function uploadPendingFile(userMessage) {
     const welcome = document.getElementById('welcomeSection');
     if (welcome) welcome.style.display = 'none';
 
-    if (file.type.startsWith('image/')) {
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+    if (isImage) {
         // Wait for image to load before continuing
         const base64 = await new Promise((resolve) => {
             const reader = new FileReader();

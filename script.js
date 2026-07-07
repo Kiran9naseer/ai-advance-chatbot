@@ -942,11 +942,18 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
     const textContainer = nameEl.parentElement;
 
     const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+    const card = document.getElementById('filePreviewCard');
+
     if (isImage) {
-        // Hide name and size container for images (ChatGPT style)
+        // ChatGPT style: no border, no background, just the thumbnail
+        card.style.background = 'none';
+        card.style.border = 'none';
+        card.style.padding = '0';
+        card.style.maxWidth = '100px';
         textContainer.style.display = 'none';
         thumb.style.width = '64px';
         thumb.style.height = '64px';
+        thumb.style.borderRadius = '10px';
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -954,10 +961,17 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
         };
         reader.readAsDataURL(file);
     } else {
-        // Reset display and show name & size for documents
+        // Document: show bordered card with name & size
+        card.style.background = 'var(--bg-glass-light)';
+        card.style.border = '1px solid var(--border-color)';
+        card.style.padding = '6px 10px';
+        card.style.maxWidth = '240px';
         textContainer.style.display = 'block';
         thumb.style.width = '32px';
         thumb.style.height = '32px';
+        thumb.style.borderRadius = '6px';
+        nameEl.style.display = 'block';
+        sizeEl.style.display = 'block';
         nameEl.textContent = file.name || 'Document';
         sizeEl.textContent = formatFileSize(file.size);
         

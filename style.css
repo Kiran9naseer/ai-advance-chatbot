@@ -786,7 +786,7 @@ body {
 }
 
 .input-row {
-    display: flex; align-items: flex-end; gap: 8px;
+    display: flex; align-items: flex-end; gap: 4px;
 }
 
 .input-container textarea {
@@ -798,7 +798,7 @@ body {
 .input-container textarea::placeholder { color: var(--text-muted); }
 
 .attach-btn, .send-btn, .mic-btn, .web-search-btn {
-    background: none; border: none; cursor: pointer; padding: 8px;
+    background: none; border: none; cursor: pointer; padding: 6px;
     border-radius: 10px; transition: var(--transition-fast);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
@@ -945,4 +945,33 @@ body {
     .menu-toggle { display: flex !important; }
     .model-selector { display: none; }
     .message { max-width: 95%; }
+
+    /* Compact input area on mobile */
+    .input-area {
+        padding: 8px 10px 12px;
+    }
+    .input-container {
+        padding: 4px 8px;
+    }
+    .input-row {
+        gap: 2px;
+    }
+    .attach-btn, .mic-btn, .web-search-btn {
+        padding: 5px;
+    }
+    .attach-btn svg, .mic-btn svg, .web-search-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    .send-btn {
+        padding: 8px;
+    }
+    .send-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    .input-container textarea {
+        font-size: 0.88rem;
+        padding: 6px 4px;
+    }
 }

@@ -597,6 +597,16 @@ function hideTyping() {
 // ============================================
 // START NEW CHAT
 // ============================================
+// Close sidebar on mobile after selecting a chat or starting new one
+function closeMobileSidebar() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const btn = document.querySelector('.menu-toggle');
+        sidebar.classList.remove('mobile-open');
+        if (btn) { btn.title = 'Open Sidebar'; btn.style.color = ''; }
+    }
+}
+
 function startNewChat() {
     currentSessionId = crypto.randomUUID();
     lastRequestBody = null;
@@ -608,6 +618,7 @@ function startNewChat() {
 
     document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
     document.getElementById('chatTitle').textContent = 'New Chat';
+    closeMobileSidebar();
 }
 
 // ============================================
@@ -673,6 +684,7 @@ async function loadSessions() {
 // ============================================
 async function loadChat(sessionId, element) {
     currentSessionId = sessionId;
+    closeMobileSidebar();
 
     document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
     if (element) element.classList.add('active');

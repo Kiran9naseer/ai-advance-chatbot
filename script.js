@@ -326,7 +326,17 @@ function addMessage(text, sender, streaming = false) {
         ? 'U'
         : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#a78bfa"/></svg>';
 
-    const formattedText = sender === 'bot' ? renderMarkdown(text) : escapeHtml(text);
+    let formattedText;
+    if (sender === 'bot') {
+        formattedText = renderMarkdown(text);
+    } else {
+        // Render generated image or document HTML as-is, otherwise escape
+        if (text.startsWith('<img') || text.startsWith('<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;')) {
+            formattedText = text;
+        } else {
+            formattedText = escapeHtml(text);
+        }
+    }
 
     let actionsHTML = '';
     if (sender === 'bot' && !streaming) {
@@ -787,7 +797,7 @@ async function saveRename(sessionId) {
     inputField.style.display = 'none';
     textSpan.style.display = 'block';
     try {
-        await fetch(`http://127.0.0.1:8000/chat/${sessionId}/rename`, {
+        await fetch(`/chat/${sessionId}/rename`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: newTitle })
@@ -803,17 +813,34 @@ async function saveRename(sessionId) {
 // ============================================
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
-    sidebar.classList.toggle('collapsed');
-    
-    // Update toggle button icon
-    const isClosed = sidebar.classList.contains('collapsed');
     const btn = document.querySelector('.menu-toggle');
-    if (isClosed) {
-        btn.title = 'Open Sidebar';
-        btn.style.color = 'var(--purple-400)';
+    
+    if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('mobile-open');
+        sidebar.classList.remove('collapsed');
+        
+        // Update toggle button icon/state on mobile
+        const isOpen = sidebar.classList.contains('mobile-open');
+        if (isOpen) {
+            btn.title = 'Close Sidebar';
+            btn.style.color = 'var(--purple-400)';
+        } else {
+            btn.title = 'Open Sidebar';
+            btn.style.color = '';
+        }
     } else {
-        btn.title = 'Close Sidebar';
-        btn.style.color = '';
+        sidebar.classList.toggle('collapsed');
+        sidebar.classList.remove('mobile-open');
+        
+        // Update toggle button icon/state on desktop
+        const isClosed = sidebar.classList.contains('collapsed');
+        if (isClosed) {
+            btn.title = 'Open Sidebar';
+            btn.style.color = 'var(--purple-400)';
+        } else {
+            btn.title = 'Close Sidebar';
+            btn.style.color = '';
+        }
     }
 }
 
@@ -912,17 +939,27 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
     const thumb = document.getElementById('filePreviewThumb');
     const nameEl = document.getElementById('filePreviewName');
     const sizeEl = document.getElementById('filePreviewSize');
-
-    nameEl.textContent = file.name;
-    sizeEl.textContent = formatFileSize(file.size);
+    const textContainer = nameEl.parentElement;
 
     if (file.type.startsWith('image/')) {
+        // Hide name and size container for images (ChatGPT style)
+        textContainer.style.display = 'none';
+        thumb.style.width = '64px';
+        thumb.style.height = '64px';
+
         const reader = new FileReader();
         reader.onload = (ev) => {
             thumb.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
         };
         reader.readAsDataURL(file);
     } else {
+        // Reset display and show name & size for documents
+        textContainer.style.display = 'block';
+        thumb.style.width = '32px';
+        thumb.style.height = '32px';
+        nameEl.textContent = file.name || 'Document';
+        sizeEl.textContent = formatFileSize(file.size);
+        
         // Document icon
         thumb.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
     }
@@ -942,16 +979,18 @@ async function uploadPendingFile(userMessage) {
     if (welcome) welcome.style.display = 'none';
 
     if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const imgHtml = `<img src="${ev.target.result}" style="max-width:200px; border-radius:10px; display:block; margin-bottom:6px;">`;
-            const msgText = userMessage ? `${imgHtml}<span>${userMessage}</span>` : imgHtml;
-            addMessage(msgText, 'user');
-        };
-        reader.readAsDataURL(file);
+        // Wait for image to load before continuing
+        const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target.result);
+            reader.readAsDataURL(file);
+        });
+        const imgHtml = `<img src="${base64}" style="max-width:200px; border-radius:10px; display:block; margin-bottom:6px;">`;
+        const msgText = userMessage ? `${imgHtml}<span>${escapeHtml(userMessage)}</span>` : imgHtml;
+        addMessage(msgText, 'user');
     } else {
-        const docHtml = `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,0.1);border-radius:8px;margin-bottom:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><span style="font-size:0.82rem;color:var(--text-secondary)">${file.name}</span></div>`;
-        const msgText = userMessage ? `${docHtml}<span>${userMessage}</span>` : docHtml;
+        const docHtml = `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,0.1);border-radius:8px;margin-bottom:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><span style="font-size:0.82rem;color:var(--text-secondary)">Document</span></div>`;
+        const msgText = userMessage ? `${docHtml}<span>${escapeHtml(userMessage)}</span>` : docHtml;
         addMessage(msgText, 'user');
     }
 

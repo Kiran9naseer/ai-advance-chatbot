@@ -786,7 +786,7 @@ body {
 }
 
 .input-row {
-    display: flex; align-items: flex-end; gap: 4px;
+    display: flex; align-items: flex-start; gap: 4px;
 }
 
 .input-container textarea {
